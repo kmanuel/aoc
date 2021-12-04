@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "run4": "ts-node ./4/index.ts"
+  },
   "devDependencies": {
     "@types/jest": "^27.0.3",
     "jest": "^27.4.2",
