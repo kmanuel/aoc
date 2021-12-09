@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "run4": "ts-node ./4/index.ts"
+    "run4": "ts-node ./4/index.ts",
+    "run9": "ts-node ./9/index.ts"
   },
   "devDependencies": {
     "@types/jest": "^27.0.3",
