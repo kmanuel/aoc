@@ -68,7 +68,7 @@ const run2 = () => {
     })
 
   let curr = 'start'
-  const visited: string[] = []
+  const visited: string[] = [curr]
   walk2(curr, visited, connections)
   console.log(`Day 12, p2: `, run2Paths)
 }
@@ -79,7 +79,6 @@ const walk2 = (
   connections: { [k: string]: string[] }
 ) => {
   if (curr === 'end') {
-    console.log(`visited: `, visited.join(','))
     run2Paths++
     return
   }
@@ -87,25 +86,18 @@ const walk2 = (
   if (!targets) {
     return
   }
-  const hasTakenSmallCaveTwiceAlready = hasVisitedSmallCaveTwice([
-    ...visited,
-    curr,
-  ])
-  const possibilities = [
-    ...targets
-      .filter((p) => p !== 'start')
-      .filter((p) => p.toUpperCase() !== p)
-      .filter((p) => !visited.includes(p) || !hasTakenSmallCaveTwiceAlready),
-    ...targets.filter((p) => p.toUpperCase() === p),
-  ]
-  possibilities.forEach((p) => walk2(p, [...visited, curr], connections))
+  const hasTakenSmallCaveTwiceAlready = !visited
+    .filter((v) => v.toLowerCase() === v)
+    .every((l) => visited.indexOf(l) === visited.lastIndexOf(l))
+  const possibilities = targets.filter(
+    (p) =>
+      p !== 'start' &&
+      (p.toUpperCase() === p ||
+        !visited.includes(p) ||
+        !hasTakenSmallCaveTwiceAlready)
+  )
+  possibilities.forEach((p) => walk2(p, [...visited, p], connections))
 }
 
 run1()
 run2()
-
-function hasVisitedSmallCaveTwice(visited: string[]) {
-  return !visited
-    .filter((v) => v.toLowerCase() === v)
-    .every((l) => visited.indexOf(l) === visited.lastIndexOf(l))
-}

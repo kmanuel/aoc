@@ -1,4 +1,3 @@
-import { getOuterBindingIdentifiers } from '@babel/types'
 import fs from 'fs'
 
 const run1 = () => {
