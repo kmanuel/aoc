@@ -1,10 +1,8 @@
-import { domainToASCII } from 'url'
-
-const TEMPLATE = [
+const data1 = [
   '#############',
   '#...........#',
-  '###.#.#.#.###',
-  '###.#.#.#.###',
+  '###B#A#A#D###',
+  '###B#C#D#C###',
   '#############',
 ]
 
@@ -12,9 +10,31 @@ const data = [
   '#############',
   '#...........#',
   '###B#A#A#D###',
+  '###D#C#B#A###',
+  '###D#B#A#C###',
   '###B#C#D#C###',
   '#############',
 ]
+
+// const TEMPLATE = [
+//   '#############',
+//   '#...........#',
+//   '###.#.#.#.###',
+//   '###.#.#.#.###',
+//   '###.#.#.#.###',
+//   '###.#.#.#.###',
+//   '#############',
+// ]
+
+// const data = [
+//   '#############',
+//   '#...........#',
+//   '###B#C#B#D###',
+//   '###A#D#C#A###',
+//   '#############',
+// ]
+
+const TEMPLATE = [...data.map((row) => row.replace(/[A-Z]/g, '.'))]
 
 interface Field {
   row: number
@@ -64,18 +84,16 @@ const isWalkable = (field: Field): boolean => {
 
 const getGoalFieldFor = (field: Field, allFields: Field[]): Field | null => {
   const goalCol = symbolGoalCols[field.symbol as 'A' | 'B' | 'C' | 'D']
-  const goalFields = allFields.filter(
-    (f) => f.col === goalCol && (f.row === 2 || f.row === 3)
+  const goalFields = allFields.filter((f) => f.col === goalCol && f.row > 1)
+  const anyOccupiedByOthers = !goalFields.every(
+    (f) => f.symbol === '.' || f.symbol === field.symbol
   )
-  const lastGoal = goalFields.filter((f) => f.row === 3)[0]
-  if (lastGoal.symbol !== '.' && lastGoal.symbol !== field.symbol) {
+  if (anyOccupiedByOthers) {
     return null
   }
-  const isLastOccupied = lastGoal.symbol === field.symbol
-  if (isLastOccupied) {
-    return goalFields.filter((f) => f.row === 2)[0]
-  }
-  return goalFields.filter((f) => f.row === 3)[0]
+  return goalFields
+    .filter((f) => f.symbol === '.')
+    .sort((a, b) => b.row - a.row)[0]
 }
 
 const getHallwayTargets = (fields: Field[]) => {
@@ -130,6 +148,7 @@ const walkFromTo = (from: Field, to: Field, config: Config): Config => {
   const costMultiplier = getCostMultiplier(from.symbol)
   const movementCost = manDist * costMultiplier
   return {
+    ...config,
     fields: copy,
     cost: config.cost + movementCost,
   }
@@ -155,7 +174,7 @@ const hasReachedGoal = (field: Field) => {
   if (field.symbol === '.') {
     throw Error()
   }
-  if (field.row === 2 || field.row === 3) {
+  if (field.row > 1) {
     if (field.symbol === 'A' && field.col === 3) {
       return true
     }
@@ -177,30 +196,51 @@ const allInGoalsForSymbol = (symbol: string, fields: Field[]): boolean => {
 }
 
 const shouldWalkerMove = (field: Field, fields: Field[]) => {
-  return !allInGoalsForSymbol(field.symbol, fields)
+  if (allInGoalsForSymbol(field.symbol, fields)) {
+    return false
+  }
+  const symbol = field.symbol
+  const col = field.col
+  if (symbol === 'A' && col !== 3) {
+    return true
+  }
+  if (symbol === 'B' && col !== 5) {
+    return true
+  }
+  if (symbol === 'C' && col !== 7) {
+    return true
+  }
+  if (symbol === 'D' && col !== 9) {
+    return true
+  }
+  const fieldsBelow = fields.filter(
+    (f) => f.col === field.col && f.row > field.row
+  )
+  const allFieldsBelowOfKind = fieldsBelow.every(
+    (f) => f.symbol === '#' || f.symbol === field.symbol
+  )
+  return !allFieldsBelowOfKind
 }
 
 let configCache: { [k: string]: boolean } = {}
-
+let failedFieldConfigs: { [k: string]: boolean } = {}
 let counter = 0
+
+var minCost = Number.MAX_VALUE
+var termination = false
 
 interface Config {
   fields: Field[]
   cost: number
+  depth: number
 }
 
-const solveIt = (config: Config): boolean => {
-  console.log(counter++)
-  const strData = toData(config.fields)
-  const cacheKey = strData.join('')
-  if (configCache[cacheKey]) {
-    return false
-  }
-  configCache[cacheKey] = true
+const toKey = (config: Config) => {
+  return toData(config.fields).join('') + '-' + config.cost
+}
 
-  let walkers = getWalkers(config.fields).filter((w) =>
-    shouldWalkerMove(w, config.fields)
-  )
+const sendWalkersHome = (config: Config) => {
+  let walkers = getWalkers(config.fields).filter((w) => w.row === 1)
 
   while (true) {
     let hasOneWalked = false
@@ -222,45 +262,75 @@ const solveIt = (config: Config): boolean => {
       break
     }
   }
+  return config
+}
 
-  walkers = getWalkers(config.fields).filter((w) =>
+const DEBUG_STATE = [
+  '#############',
+  '#BA.........#',
+  '###.#C#B#D###',
+  '###.#D#C#A###',
+  '#############',
+]
+
+const reachedEnd = (config: Config): boolean => {
+  const agents = config.fields.filter((f) => !['#', '.'].includes(f.symbol))
+  return agents.every(hasReachedGoal)
+}
+
+const failingSituations: { [k: string]: boolean } = {}
+
+const solveIt = (config: Config): boolean => {
+  if (failingSituations[toKey(config)]) {
+    return false
+  }
+  config = sendWalkersHome(config)
+  let walkers = getWalkers(config.fields).filter((w) =>
     shouldWalkerMove(w, config.fields)
   )
-
-  console.log(toData(config.fields))
-
-  if (walkers.length === 0) {
-    console.log('solved')
-    console.log('cost: ', config.cost)
-    console.log(toData(config.fields))
-    return true
+  if (config.cost >= minCost) {
+    failingSituations[toKey(config)] = true
+    return false
+  }
+  if (failingSituations[toKey(config)]) {
+    return false
   }
 
-  walkers = walkers.sort((a, b) => a.symbol.localeCompare(b.symbol))
-
-  for (let walker of walkers) {
-    if (!isInHallway(walker)) {
-      const reachableHallways = getHallwayTargets(config.fields).filter(
-        (target) => canWalkFromTo(walker, target)
-      )
-      const newConfigs = reachableHallways.map((target) =>
-        walkFromTo(walker, target, config)
-      )
-      for (let conf of newConfigs) {
-        if (solveIt(conf)) {
-          return true
-        }
-      }
+  if (reachedEnd(config)) {
+    if (config.cost < minCost) {
+      minCost = config.cost
+      console.log('new minCost', minCost)
     }
   }
+
+  walkers = walkers
+    .filter((w) => shouldWalkerMove(w, config.fields))
+    .filter((w) => !isInHallway(w))
+    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+
+  for (let walker of walkers) {
+    const reachableHallways = getHallwayTargets(config.fields).filter(
+      (target) => canWalkFromTo(walker, target)
+    )
+    const newConfigs = reachableHallways
+      .map((target) => walkFromTo(walker, target, config))
+      .filter((conf) => conf.cost < minCost)
+    for (let conf of newConfigs) {
+      solveIt(conf)
+    }
+  }
+  failingSituations[toKey(config)] = true
   return false
 }
 
 const targs = toFields(data)
+
 solveIt({
   fields: targs,
   cost: 0,
+  depth: 0,
 })
+console.log('minCostResult', minCost)
 
 // let from = fields.filter((f) => f.row === 2 && f.col === 3)[0]
 // let to = fields.filter((f) => f.row === 1 && f.col === 1)[0]
