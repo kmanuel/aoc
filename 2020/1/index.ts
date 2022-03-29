@@ -1,33 +1,55 @@
 import fs from 'fs'
-const run1 = () => {
-  const numbers = fs
-    .readFileSync('./input.txt', 'utf-8')
+
+const parseInput = (fileName: string) => {
+  return fs
+    .readFileSync(fileName, 'utf-8')
     .split('\n')
-    .map((n) => Number(n))
-  for (let i = 0; i < numbers.length; i++) {
-    for (let j = i + 1; j < numbers.length; j++) {
-      if (numbers[i] + numbers[j] === 2020) {
-        console.log(`Day 1, p1: `, numbers[i] * numbers[j])
+    .map((n) => parseInt(n, 10))
+}
+
+const run1 = (input: string) => {
+  const nums = parseInput(input)
+  const result = solve1(nums)
+  console.log(`Day1 ${input}: ${result}`)
+}
+
+const solve1 = (nums: number[]) => {
+  for (let i = 0; i < nums.length; i++) {
+    let n1 = nums[i]
+    for (let j = i + 1; j < nums.length; j++) {
+      let n2 = nums[j]
+      if (n1 + n2 === 2020) {
+        return n1 * n2
       }
     }
   }
+  throw Error('Could not find result')
 }
 
-const run2 = () => {
-  const numbers = fs
-    .readFileSync('./input.txt', 'utf-8')
-    .split('\n')
-    .map((n) => Number(n))
-  for (let i = 0; i < numbers.length; i++) {
-    for (let j = i + 1; j < numbers.length; j++) {
-      for (let k = j + 1; k < numbers.length; k++) {
-        if (numbers[i] + numbers[j] + numbers[k] === 2020) {
-          console.log(`Day 1, p2: `, numbers[i] * numbers[j] * numbers[k])
+const solve2 = (nums: number[]) => {
+    for (let i = 0; i < nums.length; i++) {
+        let n1 = nums[i]
+        for (let j = i+1; j < nums.length; j++) {
+            let n2 = nums[j]
+            for (let k = j+1; k < nums.length; k++) {
+                let n3 = nums[k]
+                if (n1 + n2 + n3 === 2020) {
+                    return n1 * n2 * n3
+                }
+            }
         }
-      }
     }
-  }
+    return -1
 }
 
-run1()
-run2()
+const run2 = (input: string) => {
+    const nums = parseInput(input)
+    const result = solve2(nums)
+    console.log(`Day1 p2 ${input}: ${result}`)
+}
+
+run1('sample.txt')
+run1('input.txt')
+
+run2('sample.txt')
+run2('input.txt')
